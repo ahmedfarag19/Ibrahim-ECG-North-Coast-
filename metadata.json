@@ -1,0 +1,11 @@
+{
+  "name": "ECG North Coast Construction Portal",
+  "description": "Internal engineering and construction management portal for ECG focused on mega projects in Egypt’s North Coast.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "Construction Management",
+    "PMO Analytics",
+    "Document Center",
+    "Real-time Coordination"
+  ]
+}

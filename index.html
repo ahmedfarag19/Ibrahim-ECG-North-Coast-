@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ECG North Coast Construction Portal | Standalone</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS v4 CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    
+    <!-- React & Babel -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style type="text/css">
+        :root {
+            --color-ecg-charcoal: #1A1C1E;
+            --color-ecg-slate: #64748B;
+            --color-ecg-accent: #003B71;
+            --color-ecg-surface: #F8F9FA;
+        }
+
+        body {
+            background-color: var(--color-ecg-surface);
+            color: var(--color-ecg-charcoal);
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        .font-display { font-family: 'Space Grotesk', sans-serif; }
+
+        .architectural-grid {
+            background-image: 
+                linear-gradient(to right, rgba(0,0,0,0.02) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(0,0,0,0.02) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        /* Utilities to match the app theme */
+        .bg-ecg-charcoal { background-color: var(--color-ecg-charcoal); }
+        .text-ecg-charcoal { color: var(--color-ecg-charcoal); }
+        .bg-ecg-accent { background-color: var(--color-ecg-accent); }
+        .text-ecg-accent { color: var(--color-ecg-accent); }
+        .bg-ecg-surface { background-color: var(--color-ecg-surface); }
+        .border-ecg-slate { border-color: var(--color-ecg-slate); }
+        
+        .fade-in { animation: fadeIn 0.5s ease-out; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.2); }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useMemo, useEffect, useRef } = React;
+
+        // --- MOCK COMPONENTS TO REPLACE LUCIDE ---
+        const Icon = ({ name, size = 20, className = "" }) => {
+            const iconRef = useRef(null);
+            
+            useEffect(() => {
+                if (iconRef.current && window.lucide) {
+                    iconRef.current.innerHTML = '';
+                    const iconElement = document.createElement('i');
+                    iconElement.setAttribute('data-lucide', name);
+                    if (size) iconElement.style.width = `${size}px`;
+                    if (size) iconElement.style.height = `${size}px`;
+                    iconRef.current.appendChild(iconElement);
+                    window.lucide.createIcons({
+                        attrs: {
+                            'stroke-width': 2,
+                            'width': size,
+                            'height': size
+                        },
+                        nameAttr: 'data-lucide'
+                    });
+                }
+            }, [name, size]);
+
+            return <span ref={iconRef} className={`inline-flex items-center justify-center ${className}`} />;
+        };
+
+        // --- CHART COMPONENT USING CHART.JS ---
+        const PerformanceChart = ({ data }) => {
+            const canvasRef = useRef(null);
+            const chartRef = useRef(null);
+
+            useEffect(() => {
+                if (canvasRef.current) {
+                    const ctx = canvasRef.current.getContext('2d');
+                    
+                    if (chartRef.current) {
+                        chartRef.current.destroy();
+                    }
+
+                    chartRef.current = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: data.map(d => d.month),
+                            datasets: [{
+                                label: 'Progress %',
+                                data: data.map(d => d.progress),
+                                borderColor: '#3B82F6',
+                                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                                fill: true,
+                                tension: 0.4,
+                                borderWidth: 3,
+                                pointRadius: 4,
+                                pointBackgroundColor: '#3B82F6'
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { display: false },
+                                tooltip: {
+                                    backgroundColor: '#1e293b',
+                                    titleFont: { size: 10 },
+                                    bodyFont: { size: 12 },
+                                    padding: 10,
+                                    displayColors: false
+                                }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    grid: { color: 'rgba(0,0,0,0.03)' },
+                                    ticks: { font: { size: 10 }, color: '#64748b' }
+                                },
+                                x: {
+                                    grid: { display: false },
+                                    ticks: { font: { size: 10 }, color: '#64748b' }
+                                }
+                            }
+                        }
+                    });
+                }
+            }, [data]);
+
+            return <canvas ref={canvasRef} />;
+        };
+
+        // --- CONSTANTS & DATA (Copied from App.tsx) ---
+        const ECG_PROJECTS = [
+            { id: '1', name: 'New Alamein Towers', category: 'High-Rise Towers', location: 'New Alamein', budget: 73.5, completionRate: 79.8, remainingWorks: 27.5, details: '15 Towers, Plot LD00 to LD08', pmoLead: 'M. Ahmed', status: 'Healthy' },
+            { id: '2', name: 'Latin District – New Alamein', category: 'Urban Residential', location: 'New Alamein', budget: 40, completionRate: 76.4, remainingWorks: 19, details: '404 Acres, 10,316 Units', pmoLead: 'S. Hassan', status: 'Healthy' },
+            { id: '3', name: 'The Heritage City – Old City', category: 'Heritage Urban', location: 'Old City', budget: 11.4, completionRate: 78, remainingWorks: 5.1, details: 'Area: 1,091,500 sqm', pmoLead: 'N. Youssef', status: 'Healthy' },
+            { id: '4', name: 'AASTMT Alamein Campus', category: 'Educational', location: 'New Alamein', budget: 4, completionRate: 97, remainingWorks: 0.15, details: 'Area: 280,000 sqm', pmoLead: 'R. Mostafa', status: 'Healthy' },
+            { id: '5', name: 'Marassi', category: 'Leisure & Residential', location: 'North Coast', budget: 8.2, completionRate: 99, remainingWorks: 0.08, pmoLead: 'Z. Kamal', status: 'Healthy' },
+            { id: '6', name: 'Katameya Coast', category: 'Residential', location: 'North Coast', budget: 4.2, completionRate: 70.7, remainingWorks: 1.26, pmoLead: 'H. Ezzat', status: 'Slow' },
+            { id: '7', name: 'Hacienda Waters', category: 'Coastal Development', location: 'North Coast', budget: 15, completionRate: 2, remainingWorks: 13, pmoLead: 'E. Said', status: 'Healthy' },
+            { id: '8', name: 'Silver Sands', category: 'Coastal Residential', location: 'North Coast', budget: 40, completionRate: 76, remainingWorks: 1.6, pmoLead: 'K. Mahmoud', status: 'Healthy' }
+        ];
+
+        const ANALYTICS_DATA = [
+            { month: 'Jan', progress: 45 },
+            { month: 'Feb', progress: 52 },
+            { month: 'Mar', progress: 48 },
+            { month: 'Apr', progress: 61 },
+            { month: 'May', progress: 72 },
+            { month: 'Jun', progress: 79.8 },
+        ];
+
+        const FEED_SYSTEM = [
+            { id: 1, type: 'observation', user: 'ECG Engineer', project: 'Alamein Towers', text: 'Re-bar structural inspection required for Tower 03 L24.', time: '2h ago' },
+            { id: 2, type: 'implementation', user: 'Contractor – Redcon', project: 'Latin District', text: 'Floor finishing samples uploaded for approval.', time: '4h ago' },
+            { id: 3, type: 'alert', user: 'System', project: 'Katameya Coast', text: 'Schedule delay detected in sector B phase 2.', time: '1d ago' },
+            { id: 4, type: 'closed', user: 'Consultant Lead', project: 'AASTMT', text: 'Site drainage technical submittal approved.', time: '2d ago' }
+        ];
+
+        // --- COMPONENTS ---
+        const Badge = ({ children, variant = 'default' }) => {
+            const styles = {
+                default: 'bg-ecg-accent/10 text-ecg-accent',
+                success: 'bg-emerald-100 text-emerald-700',
+                warning: 'bg-amber-100 text-amber-700',
+                error: 'bg-red-100 text-red-700',
+                outline: 'border border-ecg-slate/20 text-ecg-slate'
+            };
+            return (
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider ${styles[variant]}`}>
+                    {children}
+                </span>
+            );
+        };
+
+        const SectionHeader = ({ title, subtitle }) => (
+            <div className="mb-6">
+                <h2 className="text-2xl font-display font-medium text-ecg-charcoal tracking-tight lowercase first-letter:uppercase">{title}</h2>
+                {subtitle && <p className="text-sm text-slate-400 mt-1">{subtitle}</p>}
+            </div>
+        );
+
+        // --- MAIN APP ---
+        function App() {
+            const [activeTab, setActiveTab] = useState('overview');
+            const [selectedProject, setSelectedProject] = useState(null);
+            const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+            const stats = useMemo(() => ({
+                totalProjects: ECG_PROJECTS.length,
+                activeProjects: ECG_PROJECTS.filter(p => p.status === 'Healthy').length,
+                totalBudget: ECG_PROJECTS.reduce((acc, p) => acc + p.budget, 0).toFixed(1),
+                avgProgress: (ECG_PROJECTS.reduce((acc, p) => acc + p.completionRate, 0) / ECG_PROJECTS.length).toFixed(1)
+            }), []);
+
+            const renderDashboard = () => (
+                <div className="space-y-8 fade-in">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        {[
+                            { label: 'Total Projects', value: stats.totalProjects, icon: 'building-2', trend: '+2 this quarter' },
+                            { label: 'Active Sites', value: stats.activeProjects, icon: 'hard-hat', trend: '94% uptime' },
+                            { label: 'Total Value', value: `${stats.totalBudget}B`, icon: 'dollar-sign', trend: 'EGP Portfolio' },
+                            { label: 'Avg Completion', value: `${stats.avgProgress}%`, icon: 'trending-up', trend: '+4.2% since May' }
+                        ].map((stat, i) => (
+                            <div key={i} className="p-6 bg-white border border-slate-100 rounded-2xl group hover:border-[#003B71]/40 transition-all shadow-sm">
+                                <div className="flex justify-between items-start mb-4">
+                                    <div className="p-2 bg-slate-50 rounded-lg group-hover:bg-[#003B71]/10 transition-colors">
+                                        <Icon name={stat.icon} size={20} className="text-slate-400 group-hover:text-[#003B71]" />
+                                    </div>
+                                    <span className="text-[10px] font-bold text-green-600 uppercase tracking-tighter">{stat.trend}</span>
+                                </div>
+                                <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest">{stat.label}</p>
+                                <h3 className="text-3xl font-mono font-bold text-slate-800 mt-1 tracking-tight">{stat.value}</h3>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <div className="lg:col-span-2 p-8 bg-white border border-slate-100 rounded-2xl shadow-sm">
+                            <SectionHeader title="Engineering Productivity" subtitle="Projected vs Actual completion rates across core hubs" />
+                            <div className="h-[300px] w-full">
+                                <PerformanceChart data={ANALYTICS_DATA} />
+                            </div>
+                        </div>
+
+                        <div className="p-8 bg-white border border-slate-100 rounded-2xl shadow-sm">
+                            <SectionHeader title="Operation Alerts" />
+                            <div className="space-y-4">
+                                {FEED_SYSTEM.map((msg) => (
+                                    <div key={msg.id} className="flex gap-4 p-4 rounded-xl hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-all">
+                                        <div className="mt-1 p-2 rounded-full bg-blue-50 text-blue-500">
+                                            <Icon name="message-square" size={16} />
+                                        </div>
+                                        <div>
+                                            <div className="flex items-center gap-2">
+                                                <p className="text-xs font-bold text-slate-800">{msg.user}</p>
+                                                <span className="text-[10px] text-slate-300">•</span>
+                                                <p className="text-[10px] font-medium text-slate-400 mt-0.5">{msg.time}</p>
+                                            </div>
+                                            <p className="text-xs font-medium text-slate-400 underline decoration-slate-200 underline-offset-2 mt-1 truncate max-w-[150px]">{msg.project}</p>
+                                            <p className="text-sm text-slate-600 mt-1 leading-relaxed">{msg.text}</p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                            <button className="w-full mt-6 py-3 text-xs font-bold text-[#003B71] uppercase tracking-widest bg-[#003B71]/5 rounded-xl transition-all hover:bg-[#003B71] hover:text-white">
+                                View All Activity
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+                        {ECG_PROJECTS.map((project) => (
+                            <div 
+                                key={project.id}
+                                onClick={() => { setSelectedProject(project); setActiveTab('project-details'); }}
+                                className="p-6 bg-white border border-slate-100 rounded-2xl cursor-pointer group hover:border-[#003B71]/30 hover:shadow-xl hover:shadow-[#003B71]/5 transition-all"
+                            >
+                                <div className="flex justify-between items-start mb-4">
+                                    <Badge variant={project.status === 'Healthy' ? 'success' : 'warning'}>{project.status}</Badge>
+                                    <Icon name="more-vertical" size={14} className="text-slate-300" />
+                                </div>
+                                <h4 className="text-lg font-display font-bold text-slate-800 leading-tight group-hover:text-[#003B71] transition-colors">{project.name}</h4>
+                                <div className="flex items-center gap-2 mt-2 text-slate-400">
+                                    <Icon name="map-pin" size={12} />
+                                    <span className="text-[10px] font-semibold uppercase tracking-tighter">{project.location}</span>
+                                </div>
+
+                                <div className="mt-8 space-y-2">
+                                    <div className="flex justify-between items-end">
+                                        <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">Progress</span>
+                                        <span className="text-sm font-mono font-bold text-slate-800">{project.completionRate}%</span>
+                                    </div>
+                                    <div className="h-1.5 w-full bg-slate-50 rounded-full overflow-hidden">
+                                        <div 
+                                            className={`h-full rounded-full ${project.completionRate > 90 ? "bg-emerald-500" : "bg-[#003B71]"}`} 
+                                            style={{ width: `${project.completionRate}%` }}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="mt-6 pt-6 border-t border-slate-50 grid grid-cols-2 gap-4">
+                                    <div>
+                                        <p className="text-[9px] font-bold text-slate-300 uppercase tracking-tighter">Budget</p>
+                                        <p className="text-sm font-mono font-medium text-slate-600">{project.budget}B</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[9px] font-bold text-slate-300 uppercase tracking-tighter">Remaining</p>
+                                        <p className="text-sm font-mono font-medium text-slate-600">{project.remainingWorks}B</p>
+                                    </div>
+                                </div>
+                                <div className="mt-4 flex items-center justify-between text-[10px] font-bold text-[#003B71] uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">
+                                    View Details <Icon name="chevron-right" size={12} />
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+
+            return (
+                <div className="flex bg-[#F8F9FA] h-screen overflow-hidden">
+                    {/* Sidebar */}
+                    <aside className={`bg-[#1A1C1E] text-white flex flex-col transition-all duration-300 ${isSidebarOpen ? 'w-64' : 'w-20'}`}>
+                        <div className="p-8 flex flex-col">
+                            {isSidebarOpen ? (
+                                <div>
+                                    <span className="text-xl font-bold tracking-tighter text-white">ECG <span className="font-light text-slate-500">| PMO</span></span>
+                                    <span className="text-[9px] uppercase tracking-[0.2em] font-semibold text-slate-500 block mt-1">North Coast Operations</span>
+                                </div>
+                            ) : (
+                                <div className="w-full flex justify-center"><Icon name="building-2" className="text-[#003B71]" /></div>
+                            )}
+                        </div>
+
+                        <nav className="flex-1 mt-6 px-4 space-y-2">
+                            {[
+                                { id: 'overview', label: 'E-Dashboard', icon: 'layout-dashboard' },
+                                { id: 'portfolio', label: 'Projects', icon: 'building-2' },
+                                { id: 'map', label: 'Regional Map', icon: 'map' },
+                                { id: 'documents', label: 'Docs Center', icon: 'file-text' }
+                            ].map((item) => (
+                                <button
+                                    key={item.id}
+                                    onClick={() => setActiveTab(item.id)}
+                                    className={`w-full flex items-center gap-4 px-4 py-3.5 transition-all duration-300 border-l-4 ${activeTab === item.id ? 'bg-white/10 text-white border-[#003B71]' : 'text-slate-500 hover:text-white hover:bg-white/5 border-transparent'}`}
+                                >
+                                    <Icon name={item.icon} size={20} />
+                                    {isSidebarOpen && <span className="text-[10px] font-bold uppercase tracking-widest">{item.label}</span>}
+                                </button>
+                            ))}
+                        </nav>
+
+                        <div className="p-4 space-y-2">
+                            <button 
+                                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                                className="w-full flex items-center justify-center p-3 text-slate-600 hover:text-white transition-colors border border-white/5 rounded-xl"
+                            >
+                                <Icon name={isSidebarOpen ? 'x' : 'menu'} size={20} />
+                            </button>
+                            <button className="w-full flex items-center gap-4 px-4 py-3.5 rounded-xl text-slate-600 hover:text-red-400 hover:bg-red-500/5 transition-all">
+                                <Icon name="log-out" size={20} />
+                                {isSidebarOpen && <span className="text-[10px] font-bold uppercase tracking-widest">Logout</span>}
+                            </button>
+                        </div>
+                    </aside>
+
+                    {/* Main Content */}
+                    <main className="flex-1 flex flex-col overflow-y-auto architectural-grid relative">
+                        <header className="sticky top-0 z-40 bg-white border-b border-slate-200 px-8 h-16 flex items-center justify-between">
+                            <div className="relative w-full max-w-xl">
+                                <Icon name="search" size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" />
+                                <input type="text" placeholder="Search systems..." className="w-full pl-12 pr-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-sm focus:outline-none" />
+                            </div>
+                            <div className="flex items-center gap-6">
+                                <div className="text-right mr-4">
+                                    <p className="text-xs font-bold text-slate-800">A. Farag</p>
+                                    <p className="text-[10px] text-slate-400 uppercase font-bold tracking-widest">PMO Director</p>
+                                </div>
+                                <div className="w-10 h-10 rounded-xl bg-[#1A1C1E] text-white flex items-center justify-center font-bold">AF</div>
+                            </div>
+                        </header>
+
+                        <div className="p-8 max-w-[1600px] mx-auto w-full">
+                            {activeTab === 'overview' ? renderDashboard() : (
+                                <div className="h-[60vh] flex flex-col items-center justify-center text-slate-200">
+                                    <Icon name="layout-dashboard" size={80} className="mb-4 opacity-10" />
+                                    <h3 className="text-2xl font-display font-bold uppercase tracking-[0.4em]">{activeTab} View</h3>
+                                    <p className="text-xs font-semibold uppercase mt-2 tracking-widest">Module under development for standalone export</p>
+                                </div>
+                            )}
+                        </div>
+
+                        <footer className="mt-auto py-10 px-8 border-t border-slate-100 bg-white/50 backdrop-blur-sm">
+                            <div className="flex justify-between items-center">
+                                <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">Engineering Consultants Group | Internal Portfolio v4.2</p>
+                                <p className="text-[10px] font-bold text-slate-200 uppercase tracking-[0.2em]">&copy; 2026 ECG Group</p>
+                            </div>
+                        </footer>
+                    </main>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
